@@ -7,10 +7,11 @@ import Modal from './Modal'
 type Draft = { id: string; name: string; purchasePrice: string; lifeHours: string; usedHours: string; maintenanceLifetime: string; powerKw: string }
 const blank = (): Draft => ({ id: '', name: '', purchasePrice: '', lifeHours: '', usedHours: '', maintenanceLifetime: '', powerKw: '' })
 const show = (value: number) => value === 0 ? '' : String(value)
+const parseDecimal = (value: string) => Number(value.replace(',', '.') || 0)
 const fromPrinter = (printer: Printer): Draft => ({ id: printer.id, name: printer.name, purchasePrice: show(printer.purchasePrice), lifeHours: show(printer.lifeHours), usedHours: show(printer.usedHours), maintenanceLifetime: show(printer.maintenanceLifetime), powerKw: show(printer.powerKw) })
 
 function NumberField({ label, value, placeholder, onChange, required = false }: { label: string; value: string; placeholder: string; onChange: (value: string) => void; required?: boolean }) {
-  return <label className="field"><span>{label}</span><input type="number" min="0" step="any" value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} required={required} /></label>
+  return <label className="field"><span>{label}</span><input type="text" inputMode="decimal" value={value} placeholder={placeholder} onChange={event => { if (/^\d*(?:[.,]\d*)?$/.test(event.target.value)) onChange(event.target.value) }} required={required} /></label>
 }
 
 export default function PrinterSettings({ db, commit, flash }: { db: Database; commit: (next: Database, message: string) => Promise<boolean>; flash: (message: string) => void }) {
@@ -36,9 +37,9 @@ export default function PrinterSettings({ db, commit, flash }: { db: Database; c
     event.preventDefault()
     const printer: Printer = {
       id: draft.id || id(), name: draft.name.trim(),
-      purchasePrice: Number(draft.purchasePrice || 0), lifeHours: Number(draft.lifeHours || 0),
-      usedHours: Number(draft.usedHours || 0), maintenanceLifetime: Number(draft.maintenanceLifetime || 0),
-      powerKw: Number(draft.powerKw || 0),
+      purchasePrice: parseDecimal(draft.purchasePrice), lifeHours: parseDecimal(draft.lifeHours),
+      usedHours: parseDecimal(draft.usedHours), maintenanceLifetime: parseDecimal(draft.maintenanceLifetime),
+      powerKw: parseDecimal(draft.powerKw),
     }
     if (!printer.name || printer.lifeHours <= 0 || Object.entries(printer).some(([key, value]) => key !== 'id' && key !== 'name' && (!Number.isFinite(value) || Number(value) < 0)))
       return flash('Informe nome, vida útil e valores válidos para a impressora.')
@@ -48,12 +49,12 @@ export default function PrinterSettings({ db, commit, flash }: { db: Database; c
 
   async function saveEnergy(event: FormEvent) {
     event.preventDefault()
-    const energyTariff = Number(energyDraft || 0)
+    const energyTariff = parseDecimal(energyDraft)
     if (!Number.isFinite(energyTariff) || energyTariff < 0) return flash('Informe uma tarifa de energia válida.')
     if (await commit({ ...db, settings: { ...db.settings, energyTariff } }, 'Tarifa de energia salva.')) setActiveModal(null)
   }
 
-  const hourlyCost = Number(draft.lifeHours) > 0 ? (Number(draft.purchasePrice || 0) + Number(draft.maintenanceLifetime || 0)) / Number(draft.lifeHours) : 0
+  const hourlyCost = parseDecimal(draft.lifeHours) > 0 ? (parseDecimal(draft.purchasePrice) + parseDecimal(draft.maintenanceLifetime)) / parseDecimal(draft.lifeHours) : 0
 
   return <>
     <div className="settings-grid">

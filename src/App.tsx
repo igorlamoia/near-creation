@@ -53,8 +53,10 @@ import ProductFilaments from "./ProductFilaments";
 import MaterialColorInput, { MaterialColor } from "./MaterialColorInput";
 import { normalizeMaterialColor } from "./materialColor";
 import ElectricBorder from "./components/ElectricBorder";
+import SpotlightCard from "./components/SpotlightCard";
 import Modal from "./Modal";
 import IconAction from "./IconAction";
+import DecimalInput from "./DecimalInput";
 
 type Page =
   | "dashboard"
@@ -102,10 +104,6 @@ const blankSheet = (db: Database): Sheet => ({
   mode: "cost",
   margin: null,
 });
-const numeric = (value: string) => (value === "" ? 0 : Number(value));
-const optionalNumeric = (value: string) =>
-  value === "" ? null : Number(value);
-
 function Field({
   label,
   children,
@@ -588,19 +586,42 @@ export default function App() {
   }
   function openEditChannel(channel: Channel) {
     setEditingChannelId(channel.id);
-    setChannelDraft({ name: channel.name, fixedFee: channel.fixedFee, percentFee: channel.percentFee });
+    setChannelDraft({
+      name: channel.name,
+      fixedFee: channel.fixedFee,
+      percentFee: channel.percentFee,
+    });
     setChannelModalOpen(true);
   }
   async function saveChannel(event: FormEvent) {
     event.preventDefault();
     const name = channelDraft.name.trim();
-    if (!name || !Number.isFinite(channelDraft.fixedFee) || !Number.isFinite(channelDraft.percentFee) || channelDraft.fixedFee < 0 || channelDraft.percentFee < 0 || channelDraft.percentFee >= 100)
+    if (
+      !name ||
+      !Number.isFinite(channelDraft.fixedFee) ||
+      !Number.isFinite(channelDraft.percentFee) ||
+      channelDraft.fixedFee < 0 ||
+      channelDraft.percentFee < 0 ||
+      channelDraft.percentFee >= 100
+    )
       return flash("Informe um canal e taxas válidas.");
-    const channel: Channel = { id: editingChannelId || id(), name, fixedFee: channelDraft.fixedFee, percentFee: channelDraft.percentFee };
+    const channel: Channel = {
+      id: editingChannelId || id(),
+      name,
+      fixedFee: channelDraft.fixedFee,
+      percentFee: channelDraft.percentFee,
+    };
     const channels = editingChannelId
-      ? db.settings.channels.map(item => item.id === editingChannelId ? channel : item)
+      ? db.settings.channels.map((item) =>
+          item.id === editingChannelId ? channel : item,
+        )
       : [...db.settings.channels, channel];
-    if (await commit({ ...db, settings: { ...db.settings, channels } }, editingChannelId ? "Canal atualizado." : "Canal cadastrado."))
+    if (
+      await commit(
+        { ...db, settings: { ...db.settings, channels } },
+        editingChannelId ? "Canal atualizado." : "Canal cadastrado.",
+      )
+    )
       setChannelModalOpen(false);
   }
   function openPricingSave(event: FormEvent) {
@@ -694,8 +715,9 @@ export default function App() {
           {nav.map((item, index) => (
             <button
               key={`${item.label}-${index}`}
-              className={`nav-item ${page === item.id && (item.enabled || comingName === item.label) ? "active" : ""}`}
-              onClick={() => go(item.id, item.label)}
+              className={`nav-item ${page === item.id && item.enabled ? "active" : ""}`}
+              onClick={item.enabled ? () => go(item.id, item.label) : undefined}
+              disabled={!item.enabled}
             >
               <span className="nav-icon">
                 <item.icon size={18} aria-hidden="true" />
@@ -990,16 +1012,15 @@ export default function App() {
                         </Field>
                       </div>
                       <Field label="Estoque mínimo">
-                        <input
-                          type="number"
+                        <DecimalInput
                           min="0"
                           step="any"
-                          value={materialForm.minimum || ""}
+                          value={materialForm.minimum}
                           placeholder="Ex.: 1"
-                          onChange={(e) =>
+                          onValueChange={(value) =>
                             setMaterialForm({
                               ...materialForm,
-                              minimum: numeric(e.target.value),
+                              minimum: value ?? 0,
                             })
                           }
                         />
@@ -1019,31 +1040,29 @@ export default function App() {
                           label={`Saldo atual (${materialForm.unit})`}
                           hint="Pode ser editado diretamente, sem criar movimentação."
                         >
-                          <input
-                            type="number"
+                          <DecimalInput
                             min="0"
                             step="any"
-                            value={materialForm.quantity || ""}
+                            value={materialForm.quantity}
                             placeholder="Ex.: 1"
-                            onChange={(event) =>
+                            onValueChange={(value) =>
                               setMaterialForm({
                                 ...materialForm,
-                                quantity: numeric(event.target.value),
+                                quantity: value ?? 0,
                               })
                             }
                           />
                         </Field>
                         <Field label={`Custo médio por ${materialForm.unit}`}>
-                          <input
-                            type="number"
+                          <DecimalInput
                             min="0"
                             step="any"
-                            value={materialForm.unitCost || ""}
+                            value={materialForm.unitCost}
                             placeholder="Ex.: 100"
-                            onChange={(event) =>
+                            onValueChange={(value) =>
                               setMaterialForm({
                                 ...materialForm,
-                                unitCost: numeric(event.target.value),
+                                unitCost: value ?? 0,
                               })
                             }
                           />
@@ -1141,16 +1160,15 @@ export default function App() {
                             <Field
                               label={`Quantidade${selected ? ` (${selected.unit})` : ""}`}
                             >
-                              <input
-                                type="number"
+                              <DecimalInput
                                 min="0.000001"
                                 step="any"
-                                value={purchase.quantity || ""}
+                                value={purchase.quantity}
                                 placeholder="Ex.: 1"
-                                onChange={(e) =>
+                                onValueChange={(value) =>
                                   setPurchase({
                                     ...purchase,
-                                    quantity: numeric(e.target.value),
+                                    quantity: value ?? 0,
                                   })
                                 }
                                 required
@@ -1159,16 +1177,15 @@ export default function App() {
                             <Field
                               label={`Preço por ${selected?.unit || "unidade"}`}
                             >
-                              <input
-                                type="number"
+                              <DecimalInput
                                 min="0"
                                 step="any"
-                                value={purchase.unitCost || ""}
+                                value={purchase.unitCost}
                                 placeholder="Ex.: 100"
-                                onChange={(e) =>
+                                onValueChange={(value) =>
                                   setPurchase({
                                     ...purchase,
-                                    unitCost: numeric(e.target.value),
+                                    unitCost: value ?? 0,
                                   })
                                 }
                                 required
@@ -1207,17 +1224,16 @@ export default function App() {
                             <Field
                               label={`Quantidade a retirar${selected ? ` (${selected.unit})` : ""}`}
                             >
-                              <input
-                                type="number"
+                              <DecimalInput
                                 min="0.000001"
                                 max={selectedBalance?.quantity || 0}
                                 step="any"
-                                value={adjustment.quantity || ""}
+                                value={adjustment.quantity}
                                 placeholder="Ex.: 1"
-                                onChange={(e) =>
+                                onValueChange={(value) =>
                                   setAdjustment({
                                     ...adjustment,
-                                    quantity: numeric(e.target.value),
+                                    quantity: value ?? 0,
                                   })
                                 }
                                 required
@@ -1366,9 +1382,17 @@ export default function App() {
                             <td>
                               <span className="movement-date">
                                 {m.quantity < 0 ? (
-                                  <ArrowDown size={16} className="negative" aria-label="Saída" />
+                                  <ArrowDown
+                                    size={16}
+                                    className="negative"
+                                    aria-label="Saída"
+                                  />
                                 ) : (
-                                  <ArrowUp size={16} className="positive" aria-label="Entrada" />
+                                  <ArrowUp
+                                    size={16}
+                                    className="positive"
+                                    aria-label="Entrada"
+                                  />
                                 )}
                                 {new Date(
                                   `${m.date}T12:00:00`,
@@ -1470,7 +1494,11 @@ export default function App() {
                   title="Canais e taxas"
                   text="A taxa fixa é aplicada por lote vendido; a percentual incide sobre o preço final."
                   action={
-                    <button type="button" className="button button-primary" onClick={openAddChannel}>
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      onClick={openAddChannel}
+                    >
                       <Plus aria-hidden="true" /> Adicionar canal
                     </button>
                   }
@@ -1511,58 +1539,75 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-                {channelModalOpen && <Modal title={editingChannelId ? "Editar canal" : "Adicionar canal"} eyebrow="CANAIS DE VENDA" onClose={() => setChannelModalOpen(false)}>
-                <form className="form-grid" onSubmit={saveChannel}>
-                  <Field label="Nome do canal">
-                    <input
-                      value={channelDraft.name}
-                      onChange={(e) =>
-                        setChannelDraft({
-                          ...channelDraft,
-                          name: e.target.value,
-                        })
-                      }
-                      placeholder="Ex.: Marketplace"
-                      required
-                    />
-                  </Field>
-                  <Field label="Taxa fixa (R$)">
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={channelDraft.fixedFee || ""}
-                      placeholder="Ex.: 5"
-                      onChange={(e) =>
-                        setChannelDraft({
-                          ...channelDraft,
-                          fixedFee: numeric(e.target.value),
-                        })
-                      }
-                    />
-                  </Field>
-                  <Field label="Taxa percentual (%)">
-                    <input
-                      type="number"
-                      min="0"
-                      max="99.99"
-                      step="any"
-                      value={channelDraft.percentFee || ""}
-                      placeholder="Ex.: 10"
-                      onChange={(e) =>
-                        setChannelDraft({
-                          ...channelDraft,
-                          percentFee: numeric(e.target.value),
-                        })
-                      }
-                    />
-                  </Field>
-                  <div className="modal-actions">
-                    <button type="button" className="button button-outline" onClick={() => setChannelModalOpen(false)}>Cancelar</button>
-                    <button className="button button-primary" type="submit"><Save aria-hidden="true" /> {editingChannelId ? "Salvar alterações" : "Cadastrar canal"}</button>
-                  </div>
-                </form>
-                </Modal>}
+                {channelModalOpen && (
+                  <Modal
+                    title={
+                      editingChannelId ? "Editar canal" : "Adicionar canal"
+                    }
+                    eyebrow="CANAIS DE VENDA"
+                    onClose={() => setChannelModalOpen(false)}
+                  >
+                    <form className="form-grid" onSubmit={saveChannel}>
+                      <Field label="Nome do canal">
+                        <input
+                          value={channelDraft.name}
+                          onChange={(e) =>
+                            setChannelDraft({
+                              ...channelDraft,
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="Ex.: Marketplace"
+                          required
+                        />
+                      </Field>
+                      <Field label="Taxa fixa (R$)">
+                        <DecimalInput
+                          min="0"
+                          step="any"
+                          value={channelDraft.fixedFee}
+                          placeholder="Ex.: 5"
+                          onValueChange={(value) =>
+                            setChannelDraft({
+                              ...channelDraft,
+                              fixedFee: value ?? 0,
+                            })
+                          }
+                        />
+                      </Field>
+                      <Field label="Taxa percentual (%)">
+                        <DecimalInput
+                          min="0"
+                          max="99.99"
+                          step="any"
+                          value={channelDraft.percentFee}
+                          placeholder="Ex.: 10"
+                          onValueChange={(value) =>
+                            setChannelDraft({
+                              ...channelDraft,
+                              percentFee: value ?? 0,
+                            })
+                          }
+                        />
+                      </Field>
+                      <div className="modal-actions">
+                        <button
+                          type="button"
+                          className="button button-outline"
+                          onClick={() => setChannelModalOpen(false)}
+                        >
+                          Cancelar
+                        </button>
+                        <button className="button button-primary" type="submit">
+                          <Save aria-hidden="true" />{" "}
+                          {editingChannelId
+                            ? "Salvar alterações"
+                            : "Cadastrar canal"}
+                        </button>
+                      </div>
+                    </form>
+                  </Modal>
+                )}
               </section>
             </>
           )}
@@ -1629,32 +1674,30 @@ export default function App() {
                       />
                       <div className="form-row">
                         <Field label="Tempo por unidade (horas)">
-                          <input
-                            type="number"
+                          <DecimalInput
                             min="0"
                             step="any"
-                            value={sheet.printHours || ""}
+                            value={sheet.printHours}
                             placeholder="Ex.: 2"
-                            onChange={(e) =>
+                            onValueChange={(value) =>
                               setSheet({
                                 ...sheet,
-                                printHours: numeric(e.target.value),
+                                printHours: value ?? 0,
                               })
                             }
                             required
                           />
                         </Field>
                         <Field label="Mão de obra por unidade (R$)">
-                          <input
-                            type="number"
+                          <DecimalInput
                             min="0"
                             step="any"
-                            value={sheet.labor || ""}
+                            value={sheet.labor}
                             placeholder="Opcional"
-                            onChange={(e) =>
+                            onValueChange={(value) =>
                               setSheet({
                                 ...sheet,
-                                labor: numeric(e.target.value),
+                                labor: value ?? 0,
                               })
                             }
                           />
@@ -1703,20 +1746,19 @@ export default function App() {
                                 </option>
                               ))}
                           </select>
-                          <input
+                          <DecimalInput
                             aria-label="Quantidade por unidade"
-                            type="number"
                             min="0"
                             step="any"
-                            value={line.quantity || ""}
-                            onChange={(e) =>
+                            value={line.quantity}
+                            onValueChange={(value) =>
                               setSheet({
                                 ...sheet,
                                 lines: sheet.lines.map((item, i) =>
                                   i === index
                                     ? {
                                         ...item,
-                                        quantity: numeric(e.target.value),
+                                        quantity: value ?? 0,
                                       }
                                     : item,
                                 ),
@@ -1756,16 +1798,16 @@ export default function App() {
                     <div className="form-grid">
                       <div className="form-row">
                         <Field label="Quantidade no lote">
-                          <input
-                            type="number"
+                          <DecimalInput
                             min="1"
                             step="1"
-                            value={sheet.batch ?? ""}
+                            value={sheet.batch}
                             placeholder="Ex.: 10"
-                            onChange={(e) =>
+                            emptyValue={null}
+                            onValueChange={(value) =>
                               setSheet({
                                 ...sheet,
-                                batch: optionalNumeric(e.target.value),
+                                batch: value,
                               })
                             }
                             required
@@ -1810,17 +1852,17 @@ export default function App() {
                             : "Margem desejada (%)"
                         }
                       >
-                        <input
-                          type="number"
+                        <DecimalInput
                           min="0"
                           max="99.99"
                           step="any"
-                          value={sheet.margin ?? ""}
+                          value={sheet.margin}
                           placeholder="Ex.: 30"
-                          onChange={(e) =>
+                          emptyValue={null}
+                          onValueChange={(value) =>
                             setSheet({
                               ...sheet,
-                              margin: optionalNumeric(e.target.value),
+                              margin: value,
                             })
                           }
                           required
@@ -1902,24 +1944,48 @@ export default function App() {
               </form>
               {pricingSaveOpen && calculated && (
                 <Modal
-                  title={editingProduct ? "Salvar nova versão" : "Salvar produto e ficha"}
+                  title={
+                    editingProduct
+                      ? "Salvar nova versão"
+                      : "Salvar produto e ficha"
+                  }
                   eyebrow="REVISÃO DA PRECIFICAÇÃO"
                   onClose={() => setPricingSaveOpen(false)}
                 >
                   <div className="pricing-save-summary">
-                    <div><span>Preço por unidade</span><strong>{money(calculated.unitPrice)}</strong></div>
-                    <div><span>Custo por unidade</span><strong>{money(calculated.unitCost)}</strong></div>
-                    <div><span>Lote de {sheet.batch} unidades</span><strong>{money(calculated.batchPrice)}</strong></div>
+                    <div>
+                      <span>Preço por unidade</span>
+                      <strong>{money(calculated.unitPrice)}</strong>
+                    </div>
+                    <div>
+                      <span>Custo por unidade</span>
+                      <strong>{money(calculated.unitCost)}</strong>
+                    </div>
+                    <div>
+                      <span>Lote de {sheet.batch} unidades</span>
+                      <strong>{money(calculated.batchPrice)}</strong>
+                    </div>
                     <p>
-                      {calculated.assumptions.printerName} · {calculated.assumptions.channelName} · {sheet.mode === "cost" ? "Acréscimo" : "Margem"} de {number(sheet.margin ?? 0)}%
+                      {calculated.assumptions.printerName} ·{" "}
+                      {calculated.assumptions.channelName} ·{" "}
+                      {sheet.mode === "cost" ? "Acréscimo" : "Margem"} de{" "}
+                      {number(sheet.margin ?? 0)}%
                     </p>
                   </div>
-                  <form className="form-grid pricing-save-form" onSubmit={saveProduct}>
+                  <form
+                    className="form-grid pricing-save-form"
+                    onSubmit={saveProduct}
+                  >
                     <div className="form-row">
                       <Field label="Nome do produto">
                         <input
                           value={productDraft.name}
-                          onChange={(event) => setProductDraft({ ...productDraft, name: event.target.value })}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              name: event.target.value,
+                            })
+                          }
                           placeholder="Ex.: Chaveiro personalizado"
                           required
                         />
@@ -1927,7 +1993,12 @@ export default function App() {
                       <Field label="SKU">
                         <input
                           value={productDraft.sku}
-                          onChange={(event) => setProductDraft({ ...productDraft, sku: event.target.value })}
+                          onChange={(event) =>
+                            setProductDraft({
+                              ...productDraft,
+                              sku: event.target.value,
+                            })
+                          }
                           placeholder="Ex.: CHV-001"
                           required
                         />
@@ -1936,13 +2007,26 @@ export default function App() {
                     <Field label="Categoria (opcional)">
                       <input
                         value={productDraft.category}
-                        onChange={(event) => setProductDraft({ ...productDraft, category: event.target.value })}
+                        onChange={(event) =>
+                          setProductDraft({
+                            ...productDraft,
+                            category: event.target.value,
+                          })
+                        }
                         placeholder="Ex.: Chaveiros"
                       />
                     </Field>
                     <div className="modal-actions">
-                      <button type="button" className="button button-outline" onClick={() => setPricingSaveOpen(false)}>Voltar</button>
-                      <button type="submit" className="button button-primary"><Save aria-hidden="true" /> Confirmar salvamento</button>
+                      <button
+                        type="button"
+                        className="button button-outline"
+                        onClick={() => setPricingSaveOpen(false)}
+                      >
+                        Voltar
+                      </button>
+                      <button type="submit" className="button button-primary">
+                        <Save aria-hidden="true" /> Confirmar salvamento
+                      </button>
                     </div>
                   </form>
                 </Modal>
@@ -1977,56 +2061,82 @@ export default function App() {
                   {db.products.map((product) => {
                     const latest = product.quotes.at(-1)!;
                     return (
-                      <article className="product-card" key={product.id}>
-                        <div className="product-symbol">
-                          <Sparkles size={34} aria-hidden="true" />
+                      <SpotlightCard
+                        key={product.id}
+                        className="product-spotlight-card"
+                        theme="dark"
+                        spotlightColor="#8860D8"
+                        intensity={0.15}
+                        spotlightSize={240}
+                        softness={0.7}
+                        shape="circle"
+                        borderGlow={0.6}
+                        proximity={80}
+                        smoothing={0.3}
+                        grain={0}
+                        ambient={false}
+                        flare
+                      >
+                        <div className="product-cover">
+                          <img
+                            className="product-cover-image product-cover-placeholder"
+                            src={logo}
+                            alt=""
+                          />
+                          <div className="product-cover-heading">
+                            <div className="product-cover-identity">
+                              <span className="product-cover-sku">{product.sku}</span>
+                              <h3>{product.name}</h3>
+                            </div>
+                            <span className="product-cover-category">{product.category || "Sem categoria"}</span>
+                          </div>
+                          <div className="product-cover-content">
+                            <div className="product-cover-price">
+                              <span>Preço / un.</span>
+                              <strong>{money(latest.unitPrice)}</strong>
+                            </div>
+                            <span className="product-cover-cost">
+                              Custo {money(latest.unitCost)} / un.
+                            </span>
+                          </div>
                         </div>
                         <div className="product-card-body">
-                          <span className="eyebrow">
-                            {product.category || "SEM CATEGORIA"} ·{" "}
-                            {product.sku}
-                          </span>
-                          <h3>{product.name}</h3>
-                          <div className="product-price">
-                            <span>Preço sugerido / unidade</span>
-                            <strong>{money(latest.unitPrice)}</strong>
-                          </div>
-                          <div className="product-meta">
-                            <span>Custo: {money(latest.unitCost)}</span>
+                          <ProductFilaments
+                            db={db}
+                            filaments={latest.sheet.filaments}
+                          />
+                          <div className="product-actions">
                             <span>
                               {product.quotes.length}{" "}
                               {product.quotes.length === 1
                                 ? "versão"
                                 : "versões"}
                             </span>
-                          </div>
-                          <ProductFilaments
-                            db={db}
-                            filaments={latest.sheet.filaments}
-                          />
-                          <div className="product-actions">
-                            <button
-                              className="button button-outline"
-                              onClick={() => recalculate(product)}
-                            >
-                              <RotateCcw aria-hidden="true" /> Recalcular
-                            </button>
-                            <IconAction
-                              icon={productDetail === product.id ? EyeOff : Eye}
-                              label={
-                                productDetail === product.id
-                                  ? `Ocultar histórico de ${product.name}`
-                                  : `Ver histórico de ${product.name}`
-                              }
-                              tone="blue"
-                              onClick={() =>
-                                setProductDetail(
+                            <div>
+                              <IconAction
+                                icon={RotateCcw}
+                                label={`Recalcular ${product.name}`}
+                                onClick={() => recalculate(product)}
+                              />
+                              <IconAction
+                                icon={
+                                  productDetail === product.id ? EyeOff : Eye
+                                }
+                                label={
                                   productDetail === product.id
-                                    ? ""
-                                    : product.id,
-                                )
-                              }
-                            />
+                                    ? `Ocultar histórico de ${product.name}`
+                                    : `Ver histórico de ${product.name}`
+                                }
+                                tone="blue"
+                                onClick={() =>
+                                  setProductDetail(
+                                    productDetail === product.id
+                                      ? ""
+                                      : product.id,
+                                  )
+                                }
+                              />
+                            </div>
                           </div>
                           {productDetail === product.id && (
                             <div className="version-list">
@@ -2049,7 +2159,7 @@ export default function App() {
                             </div>
                           )}
                         </div>
-                      </article>
+                      </SpotlightCard>
                     );
                   })}
                 </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeMaterialColor } from './materialColor'
+import { normalizeMaterialColor } from '../lib/materialColor'
 
 describe('normalizeMaterialColor', () => {
   it('aceita HEX curto, longo e RGB e guarda HEX padronizado', () => {

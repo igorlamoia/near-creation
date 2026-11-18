@@ -1,13 +1,13 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-nova",
+  "style": "radix-nova",
   "rsc": false,
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/palette.css",
+    "css": "src/styles/app.css",
     "baseColor": "zinc",
-    "cssVariables": false,
+    "cssVariables": true,
     "prefix": ""
   },
   "iconLibrary": "lucide",

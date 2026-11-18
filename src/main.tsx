@@ -1,3 +1,4 @@
+import { TooltipProvider } from './components/ui/tooltip'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import GlowCursor from './components/GlowCursor'
@@ -7,7 +8,9 @@ import './styles/app.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <TooltipProvider delayDuration={350}>
+      <RouterProvider router={router} />
+    </TooltipProvider>
     <GlowCursor
       className="site-glow-cursor"
       color="#3868D9"

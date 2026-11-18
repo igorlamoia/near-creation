@@ -1,3 +1,5 @@
+import { Button } from './ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import type { ButtonHTMLAttributes } from 'react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -15,14 +17,20 @@ export default function IconAction({
   ...props
 }: Props) {
   return (
-    <button
-      type="button"
-      className={`icon-action icon-action-${tone} ${className}`}
-      title={label}
-      aria-label={label}
-      {...props}
-    >
-      <Icon size={17} strokeWidth={2} aria-hidden="true" />
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          type="button"
+          className={`icon-action icon-action-${tone} ${className}`}
+          aria-label={label}
+          {...props}
+        >
+          <Icon size={17} strokeWidth={2} aria-hidden="true" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent sideOffset={6}>{label}</TooltipContent>
+    </Tooltip>
   )
 }

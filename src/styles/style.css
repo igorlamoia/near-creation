@@ -593,7 +593,7 @@ h3 {
   color: #7b8b7d;
   font-weight: 700;
 }
-.segmented button.selected {
+.segmented button[data-state='checked'] {
   background: white;
   color: #25422e;
   box-shadow: 0 1px 5px #cad8c6;

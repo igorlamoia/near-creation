@@ -1,3 +1,5 @@
+import { SegmentedControl } from '../components/ui/segmented-control'
+import { Slider } from '../components/ui/slider'
 import { useState, type FormEvent } from 'react'
 import { Calculator, Plus, Save, X } from 'lucide-react'
 import { type Product, id, money, number, priceQuote } from '../lib/domain'
@@ -299,22 +301,15 @@ export default function Pricing() {
                   </select>
                 </Field>
               </div>
-              <div className="segmented">
-                <button
-                  type="button"
-                  className={sheet.mode === 'cost' ? 'selected' : ''}
-                  onClick={() => changeMode('cost')}
-                >
-                  Acréscimo sobre custo
-                </button>
-                <button
-                  type="button"
-                  className={sheet.mode === 'sale' ? 'selected' : ''}
-                  onClick={() => changeMode('sale')}
-                >
-                  Margem sobre venda
-                </button>
-              </div>
+              <SegmentedControl
+                label="Modo de precificação"
+                value={sheet.mode}
+                onValueChange={changeMode}
+                options={[
+                  { value: 'cost', label: 'Acréscimo sobre custo' },
+                  { value: 'sale', label: 'Margem sobre venda' },
+                ]}
+              />
               <Field
                 label={sheet.mode === 'cost' ? 'Acréscimo desejado (%)' : 'Margem desejada (%)'}
               >
@@ -327,19 +322,18 @@ export default function Pricing() {
                   }
                 />
               </Field>
-              <input
-                className="margin-range"
-                type="range"
+              <Slider
+                className="min-h-6 cursor-pointer"
                 aria-label={
                   sheet.mode === 'cost'
                     ? 'Ajustar acréscimo sobre custo'
                     : 'Ajustar margem sobre venda'
                 }
-                min="0"
+                min={0}
                 max={marginMax}
-                step="0.01"
-                value={Math.max(0, Math.min(marginMax, displayedMargin ?? 0))}
-                onChange={(event) => changeMargin(Number(event.target.value))}
+                step={0.01}
+                value={[Math.max(0, Math.min(marginMax, displayedMargin ?? 0))]}
+                onValueChange={([value]) => changeMargin(value)}
               />
               <p className="field-hint">
                 {sheet.mode === 'cost'

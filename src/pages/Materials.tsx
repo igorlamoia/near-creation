@@ -1,3 +1,4 @@
+import { SegmentedControl } from '../components/ui/segmented-control'
 import { Fragment, useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import {
@@ -488,24 +489,16 @@ export default function Materials() {
                   </span>
                 </div>
               )}
-              <div className="segmented">
-                <button
-                  type="button"
-                  disabled={!!editingMovementId}
-                  className={materialTab === 'purchase' ? 'selected' : ''}
-                  onClick={() => setMaterialTab('purchase')}
-                >
-                  Entrada / compra
-                </button>
-                <button
-                  type="button"
-                  disabled={!!editingMovementId}
-                  className={materialTab === 'adjustment' ? 'selected' : ''}
-                  onClick={() => setMaterialTab('adjustment')}
-                >
-                  Ajuste de saída
-                </button>
-              </div>
+              <SegmentedControl
+                label="Tipo de movimentação"
+                value={materialTab}
+                onValueChange={setMaterialTab}
+                disabled={!!editingMovementId}
+                options={[
+                  { value: 'purchase', label: 'Entrada / compra' },
+                  { value: 'adjustment', label: 'Ajuste de saída' },
+                ]}
+              />
               {materialTab === 'purchase' ? (
                 <>
                   <div className="form-row">

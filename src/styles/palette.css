@@ -301,7 +301,7 @@ body {
 .segmented button {
   @apply text-text-secondary;
 }
-.segmented button.selected {
+.segmented button[data-state='checked'] {
   @apply bg-surface text-brand-purple;
   box-shadow: 0 1px 5px rgb(0 0 0 / 15%);
 }
@@ -599,11 +599,6 @@ td strong {
   flex-wrap: wrap;
   gap: 12px;
 }
-.margin-range {
-  width: 100%;
-  accent-color: var(--color-brand-purple);
-  cursor: pointer;
-}
 .pricing-loss {
   color: var(--color-brand-pink);
   font-size: 12px;
@@ -623,7 +618,6 @@ td strong {
   max-height: calc(100dvh - 28px);
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
   outline: none;
 }
 .app-modal-glow {

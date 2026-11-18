@@ -5,6 +5,7 @@ import Materials from './pages/Materials'
 import Pricing from './pages/Pricing'
 import Products from './pages/Products'
 import Settings from './pages/Settings'
+import Simulator from './pages/Simulator'
 
 const rootRoute = createRootRoute({ component: RouteLayout })
 
@@ -38,6 +39,16 @@ const settingsRoute = createRoute({
   path: '/settings',
   component: Settings,
 })
+const simulatorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/simulator',
+  component: Simulator,
+})
+const legacySimulatorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/simulador',
+  component: Simulator,
+})
 
 const routeTree = rootRoute.addChildren([
   dashboardRoute,
@@ -46,6 +57,8 @@ const routeTree = rootRoute.addChildren([
   pricingRoute,
   productsRoute,
   settingsRoute,
+  simulatorRoute,
+  legacySimulatorRoute,
 ])
 
 export const router = createRouter({

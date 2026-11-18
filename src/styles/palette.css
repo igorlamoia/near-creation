@@ -398,6 +398,199 @@ td strong {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2rem;
   }
 }
+
+.scale-simulator {
+  margin-top: 18px;
+  overflow: hidden;
+}
+.scale-simulator > .section-heading {
+  align-items: center;
+  gap: 20px;
+}
+.simulation-reference {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.simulation-reference > div,
+.simulation-reference > button {
+  @apply flex min-w-0 items-center gap-3 rounded-xl border border-border bg-elevated p-3;
+}
+.simulation-reference > button {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+}
+.simulation-reference-toggle {
+  transition:
+    opacity 160ms ease,
+    border-color 160ms ease;
+}
+.simulation-reference-toggle:hover {
+  border-color: color-mix(in srgb, var(--color-brand-purple) 65%, var(--color-border));
+}
+.simulation-reference-toggle.is-hidden {
+  opacity: 0.6;
+}
+.simulation-reference svg {
+  @apply size-5 shrink-0 text-brand-purple;
+}
+.simulation-reference span {
+  @apply flex min-w-0 flex-col gap-1;
+}
+.simulation-reference small,
+.simulation-results small {
+  @apply text-xs text-text-secondary;
+}
+.simulation-reference strong {
+  @apply truncate text-sm text-text-primary;
+}
+.simulation-reference .field {
+  width: 100%;
+  gap: 5px;
+}
+.simulation-reference .field > span {
+  @apply text-xs text-text-secondary;
+}
+.simulation-reference input {
+  min-width: 0;
+  height: 36px;
+}
+.simulation-empty {
+  @apply flex items-center justify-center gap-3 rounded-xl border border-dashed border-brand-purple/50 bg-brand-purple/5 px-5 py-8 text-text-secondary;
+}
+.simulation-empty svg {
+  @apply text-brand-purple;
+}
+.simulation-empty p {
+  margin: 0;
+}
+.simulation-method-hint {
+  margin-top: 9px;
+}
+.simulation-visibility-hint {
+  @apply -mt-3 mb-5 text-xs text-text-secondary;
+}
+.simulation-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.simulation-slider {
+  margin: 19px 0 22px;
+}
+.simulation-results {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 14px;
+}
+.simulation-results-price-only {
+  grid-template-columns: 1fr;
+}
+.simulation-price {
+  @apply flex flex-col rounded-xl border border-brand-purple/40 p-5;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-brand-blue) 24%, var(--color-elevated)),
+    color-mix(in srgb, var(--color-brand-purple) 23%, var(--color-elevated))
+  );
+}
+.simulation-price strong {
+  @apply my-2 text-3xl text-text-primary;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.simulation-price span {
+  @apply text-xs text-text-secondary;
+}
+.simulation-estimates {
+  @apply grid grid-cols-2 gap-3 rounded-xl border border-border bg-elevated p-4;
+}
+.simulation-estimates > div:not(.simulation-filaments) {
+  @apply flex items-center gap-3;
+}
+.simulation-estimates svg {
+  @apply size-5 shrink-0 text-brand-purple;
+}
+.simulation-estimates span:not(.simulation-filaments span) {
+  @apply flex flex-col gap-1;
+}
+.simulation-estimates strong {
+  @apply text-sm text-text-primary;
+}
+.simulation-filaments {
+  @apply col-span-2 flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-3 text-xs text-text-secondary;
+}
+.simulation-filaments span {
+  display: inline;
+}
+.simulation-disclaimer {
+  @apply mt-4 flex items-start gap-2 rounded-lg bg-brand-blue/8 p-3 text-xs leading-5 text-text-secondary;
+}
+.simulation-disclaimer svg {
+  @apply mt-0.5 size-4 shrink-0 text-brand-blue;
+}
+.simulation-error {
+  @apply mb-4 rounded-lg border border-brand-pink/40 bg-brand-pink/10 p-3 text-xs text-brand-pink;
+}
+.simulation-copy-status {
+  @apply mb-0 mt-3 text-right text-xs text-text-secondary;
+}
+.public-simulator-page {
+  width: min(1080px, calc(100% - 32px));
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 54px 0;
+}
+.public-simulator-header {
+  max-width: 700px;
+  margin-bottom: 28px;
+}
+.public-simulator-header h1 {
+  margin: 9px 0 10px;
+}
+.public-simulator-header p {
+  @apply text-text-secondary;
+}
+.public-simulator-page .scale-simulator {
+  margin-top: 0;
+}
+.public-simulator-error {
+  max-width: 600px;
+  text-align: center;
+  padding: 42px;
+}
+.public-simulator-error > svg {
+  @apply mx-auto mb-4 size-9 text-brand-pink;
+}
+.public-simulator-error p {
+  @apply text-text-secondary;
+}
+
+@media (max-width: 620px) {
+  .scale-simulator > .section-heading {
+    align-items: stretch;
+  }
+  .scale-simulator > .section-heading .button {
+    width: 100%;
+  }
+  .simulation-reference,
+  .simulation-controls,
+  .simulation-results {
+    grid-template-columns: 1fr;
+  }
+  .simulation-estimates {
+    grid-template-columns: 1fr;
+  }
+  .simulation-filaments {
+    grid-column: 1;
+  }
+  .public-simulator-page {
+    width: min(100% - 24px, 1080px);
+    padding: 30px 0;
+  }
+}
 .channel-row strong {
   @apply text-text-primary;
 }

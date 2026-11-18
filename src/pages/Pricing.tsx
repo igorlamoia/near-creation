@@ -13,6 +13,7 @@ import { blankSheet } from '../lib/blankSheet'
 import { useAppStore } from '../store/useAppStore'
 import { useNavigate } from '@tanstack/react-router'
 import { usePricingDraft } from '../store/usePricingDraft'
+import ScaleSimulator from '../components/ScaleSimulator'
 
 export default function Pricing() {
   const { db, commit, setNotice: flash } = useAppStore()
@@ -462,6 +463,30 @@ export default function Pricing() {
           </p>
         </aside>
       </form>
+      {calculated && calculated.effectiveMargin != null && sheet.batch != null && (
+        <ScaleSimulator
+          base={{
+            unitPrice: calculated.unitPrice,
+            filaments: sheet.filaments.map((filament) => ({
+              name:
+                db.materials.find((material) => material.id === filament.materialId)?.name ??
+                'Filamento',
+              grams: filament.weightGrams,
+            })),
+            timeHours: sheet.printHours,
+            fixedUnitCost: calculated.costs.supplies + calculated.costs.labor,
+            scalableUnitCost:
+              calculated.costs.filament + calculated.costs.energy + calculated.costs.printer,
+            batch: sheet.batch,
+            fixedFee: calculated.assumptions.fixedFee,
+            percentFee: calculated.assumptions.percentFee,
+            pricingMode: sheet.mode,
+            margin: calculated.effectiveMargin,
+          }}
+          editableReferenceSize
+          allowVisibilitySelection
+        />
+      )}
       {pricingSaveOpen && calculated && (
         <Modal
           title={editingProduct ? 'Salvar nova versão' : 'Salvar produto e ficha'}

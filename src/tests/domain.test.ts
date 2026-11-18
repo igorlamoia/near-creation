@@ -135,6 +135,58 @@ describe('precificação', () => {
     const quote = priceQuote({ ...sheet, mode: 'cost', margin: 50 }, db)
     expect(quote.batchPrice).toBeCloseTo((22.4 * 1.5 + 5) / 0.9)
   })
+  it('aceita acréscimos de 100% e 500% sobre custo, sem confundir com margem sobre venda', () => {
+    for (const margin of [100, 150, 500]) {
+      const quote = priceQuote({ ...sheet, mode: 'cost', margin }, db)
+      expect(quote.batchPrice).toBeCloseTo((22.4 * (1 + margin / 100) + 5) / 0.9)
+      expect((quote.profit / quote.batchCost) * 100).toBeCloseTo(margin)
+    }
+    expect(() => priceQuote({ ...sheet, margin: 100 }, db)).toThrow('menor que 100%')
+  })
+  it('discrimina a taxa percentual e soma a taxa fixa uma vez por lote', () => {
+    const quote = priceQuote(sheet, db)
+    expect(quote.percentageFee).toBeCloseTo(quote.batchPrice * 0.1)
+    expect(quote.totalFees).toBeCloseTo(quote.batchPrice * 0.1 + 5)
+    expect(quote.batchPrice - quote.totalFees - quote.batchCost).toBeCloseTo(quote.profit)
+    const direct = priceQuote({ ...sheet, channelId: 'direct' }, db)
+    expect(direct.totalFees).toBe(0)
+  })
+  it('recalcula a margem líquida a partir do preço final digitado', () => {
+    const quote = priceQuote({ ...sheet, salePrice: 30 }, db)
+    expect(quote.unitPrice).toBe(30)
+    expect(quote.batchPrice).toBe(60)
+    expect(quote.totalFees).toBe(11)
+    expect(quote.profit).toBeCloseTo(26.6)
+    expect(quote.effectiveMargin).toBeCloseTo((26.6 / 60) * 100)
+    const forward = priceQuote({ ...sheet, margin: quote.effectiveMargin }, db)
+    expect(forward.unitPrice).toBeCloseTo(30)
+  })
+  it('recalcula acréscimo acima de 100% pelo preço final e permite voltar à fórmula', () => {
+    const quote = priceQuote({ ...sheet, mode: 'cost', salePrice: 70 }, db)
+    expect(quote.effectiveMargin).toBeGreaterThan(100)
+    const forward = priceQuote({ ...sheet, mode: 'cost', margin: quote.effectiveMargin }, db)
+    expect(forward.unitPrice).toBeCloseTo(70)
+  })
+  it('mantém o preço informado ao alterar custos, lote ou canal e recalcula a margem', () => {
+    const original = priceQuote({ ...sheet, salePrice: 30 }, db)
+    for (const changes of [{ labor: 10 }, { batch: 10 }, { channelId: 'direct' }]) {
+      const changed = priceQuote({ ...sheet, ...changes, salePrice: 30 }, db)
+      expect(changed.unitPrice).toBe(30)
+      expect(changed.effectiveMargin).not.toBe(original.effectiveMargin)
+    }
+  })
+  it('representa prejuízo sem trocar silenciosamente o preço informado', () => {
+    const quote = priceQuote({ ...sheet, salePrice: 5 }, db)
+    expect(quote.unitPrice).toBe(5)
+    expect(quote.profit).toBeLessThan(0)
+    expect(quote.effectiveMargin).toBeLessThan(0)
+  })
+  it('rejeita preços e percentuais não finitos', () => {
+    for (const salePrice of [0, -1, NaN, Infinity])
+      expect(() => priceQuote({ ...sheet, salePrice }, db)).toThrow('preço de venda')
+    for (const margin of [NaN, Infinity, -1])
+      expect(() => priceQuote({ ...sheet, margin }, db)).toThrow('margem válida')
+  })
   it('rejeita margem e taxa que anulam o divisor', () => {
     expect(() => priceQuote({ ...sheet, margin: 90 }, db)).toThrow()
   })

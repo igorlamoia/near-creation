@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { Fragment, useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import {
   type Material,
@@ -20,8 +20,22 @@ import Empty from '../components/Empty'
 import SectionHeading from '../components/SectionHeading'
 import { useAppStore } from '../store/useAppStore'
 
+const categories: {
+  kind: MaterialKind
+  title: string
+  singular: string
+  unit: Material['unit']
+}[] = [
+  { kind: 'Filamento', title: 'Filamentos', singular: 'filamento', unit: 'kg' },
+  { kind: 'Embalagem', title: 'Embalagens', singular: 'embalagem', unit: 'un' },
+  { kind: 'Acessório', title: 'Acessórios', singular: 'acessório', unit: 'un' },
+  { kind: 'Outro', title: 'Outros', singular: 'outro insumo', unit: 'un' },
+]
+
 export default function Materials() {
   const { db, commit, setNotice: flash } = useAppStore()
+  const [activeKind, setActiveKind] = useState<MaterialKind>('Filamento')
+  const activeCategory = categories.find((category) => category.kind === activeKind)!
   const [materialForm, setMaterialForm] = useState({
     name: '',
     kind: 'Filamento' as MaterialKind,
@@ -56,12 +70,14 @@ export default function Materials() {
   const selectedBalance = selected
     ? materialBalance(selected.id, db.movements, selected.stockBaseline)
     : null
-  function openAddMaterial() {
+  function openAddMaterial(kind: MaterialKind) {
+    const category = categories.find((item) => item.kind === kind)!
+    setActiveKind(kind)
     setEditingMaterialId('')
     setMaterialForm({
       name: '',
-      kind: 'Filamento',
-      unit: 'kg',
+      kind,
+      unit: category.unit,
       minimum: 0,
       quantity: 0,
       unitCost: 0,
@@ -70,6 +86,7 @@ export default function Materials() {
     setMaterialModal('material')
   }
   function openEditMaterial(material: Material) {
+    setActiveKind(material.kind)
     const balance = materialBalance(material.id, db.movements, material.stockBaseline)
     const currentCost =
       balance.quantity === 0 ? (material.stockBaseline?.unitCost ?? 0) : balance.average
@@ -85,15 +102,17 @@ export default function Materials() {
     setNewMaterialColor(material.color || '')
     setMaterialModal('material')
   }
-  function openMovement(materialId?: string) {
+  function openMovement(kind: MaterialKind, materialId?: string) {
+    setActiveKind(kind)
     setEditingMovementId('')
-    setSelectedMaterial(materialId || db.materials[0]?.id || '')
+    setSelectedMaterial(materialId || db.materials.find((item) => item.kind === kind)?.id || '')
     setMaterialTab('purchase')
     setPurchase({ quantity: 0, unitCost: 0, date: today(), note: '' })
     setAdjustment({ quantity: 0, date: today(), note: '' })
     setMaterialModal('movement')
   }
   function openEditMovement(movement: Movement) {
+    setActiveKind(db.materials.find((item) => item.id === movement.materialId)!.kind)
     setEditingMovementId(movement.id)
     setSelectedMaterial(movement.materialId)
     setMaterialTab(movement.type)
@@ -304,30 +323,18 @@ export default function Materials() {
           <h1>Materiais e insumos</h1>
           <p>Registre entradas, acompanhe saldos e preserve o histórico de preços.</p>
         </div>
-        <div className="inventory-actions">
-          <button
-            type="button"
-            className="button button-outline"
-            onClick={() => openMovement()}
-            disabled={!db.materials.length}
-          >
-            <ArrowUpDown aria-hidden="true" /> Movimentação
-          </button>
-          <button type="button" className="button button-primary" onClick={openAddMaterial}>
-            <Plus aria-hidden="true" /> Adicionar material
-          </button>
-        </div>
       </div>
       {materialModal === 'material' && (
         <Modal
-          title={editingMaterialId ? 'Editar material e inventário' : 'Adicionar material'}
-          eyebrow="INVENTÁRIO"
+          key={`material-${activeKind}`}
+          title={`${editingMaterialId ? 'Editar' : 'Adicionar'} ${activeCategory.singular}`}
+          eyebrow={activeCategory.title.toUpperCase()}
           onClose={() => setMaterialModal(null)}
         >
           <section className="panel">
             <SectionHeading
               eyebrow={editingMaterialId ? 'ALTERAR CADASTRO' : 'NOVO CADASTRO'}
-              title="Dados do material"
+              title={`Dados de ${activeCategory.title.toLowerCase()}`}
             />
             <form onSubmit={saveMaterial} className="form-grid">
               <Field label="Nome do material">
@@ -339,28 +346,21 @@ export default function Materials() {
                       name: e.target.value,
                     })
                   }
-                  placeholder="Ex.: PLA Branco"
+                  placeholder={
+                    activeKind === 'Filamento'
+                      ? 'Ex.: PLA Branco'
+                      : activeKind === 'Embalagem'
+                        ? 'Ex.: Caixa de envio'
+                        : activeKind === 'Acessório'
+                          ? 'Ex.: Argola de chaveiro'
+                          : 'Ex.: Cola'
+                  }
                   required
                 />
               </Field>
               <div className="form-row">
                 <Field label="Tipo">
-                  <select
-                    value={materialForm.kind}
-                    onChange={(e) => {
-                      const kind = e.target.value as MaterialKind
-                      setMaterialForm({
-                        ...materialForm,
-                        kind,
-                        unit: kind === 'Filamento' ? 'kg' : materialForm.unit,
-                      })
-                    }}
-                  >
-                    <option>Filamento</option>
-                    <option>Acessório</option>
-                    <option>Embalagem</option>
-                    <option>Outro</option>
-                  </select>
+                  <input value={materialForm.kind} readOnly />
                 </Field>
                 <Field label="Unidade">
                   <select
@@ -441,7 +441,7 @@ export default function Materials() {
                 </p>
               )}
               <button className="button button-primary" type="submit">
-                {editingMaterialId ? 'Salvar alterações' : 'Cadastrar material'}{' '}
+                {editingMaterialId ? 'Salvar alterações' : `Cadastrar ${activeCategory.singular}`}{' '}
                 <Save aria-hidden="true" />
               </button>
             </form>
@@ -450,8 +450,9 @@ export default function Materials() {
       )}
       {materialModal === 'movement' && (
         <Modal
-          title={editingMovementId ? 'Editar movimentação' : 'Registrar movimentação'}
-          eyebrow="ESTOQUE"
+          key={`movement-${activeKind}`}
+          title={`${editingMovementId ? 'Editar' : 'Registrar'} movimentação de ${activeCategory.title.toLowerCase()}`}
+          eyebrow={activeCategory.title.toUpperCase()}
           onClose={() => setMaterialModal(null)}
         >
           <section className="panel">
@@ -467,11 +468,13 @@ export default function Materials() {
                   required
                 >
                   <option value="">Selecione um material</option>
-                  {db.materials.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
+                  {db.materials
+                    .filter((m) => m.kind === activeKind)
+                    .map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                 </select>
               </Field>
               {selected && (
@@ -619,141 +622,181 @@ export default function Materials() {
           </section>
         </Modal>
       )}
-      <section className="panel table-panel">
-        <div className="flex items-center justify-between">
-          <SectionHeading eyebrow="SALDOS ATUAIS" title="Seu inventário" />
-          <span className="page-tag">{db.materials.length} materiais</span>
-        </div>
+      <SectionHeading eyebrow="INVENTÁRIO POR CATEGORIA" title="Seu inventário" />
+      {categories.map((category) => {
+        const categoryMaterials = materialSummary.filter(
+          (item) => item.material.kind === category.kind,
+        )
+        const materialIds = new Set(categoryMaterials.map((item) => item.material.id))
+        const categoryMovements = db.movements.filter((item) => materialIds.has(item.materialId))
+        return (
+          <Fragment key={category.kind}>
+            <section className="panel table-panel" aria-label={category.title}>
+              <div className="flex items-center justify-between">
+                <SectionHeading eyebrow="SALDOS ATUAIS" title={category.title} />
+                <div className="inventory-actions">
+                  <span className="page-tag">{categoryMaterials.length} itens</span>
+                  <button
+                    type="button"
+                    className="button button-outline"
+                    disabled={!categoryMaterials.length}
+                    onClick={() => openMovement(category.kind)}
+                  >
+                    <ArrowUpDown aria-hidden="true" /> Movimentar {category.title.toLowerCase()}
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => openAddMaterial(category.kind)}
+                  >
+                    <Plus aria-hidden="true" /> Adicionar {category.singular}
+                  </button>
+                </div>
+              </div>
 
-        {db.materials.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Cor</th>
-                  <th>Tipo</th>
-                  <th>Saldo</th>
-                  <th>Custo médio</th>
-                  <th>Valor em estoque</th>
-                  <th>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {materialSummary.map(({ material, balance }) => (
-                  <tr key={material.id}>
-                    <td
-                      style={
-                        material.color
-                          ? {
-                              boxShadow: `inset 4px 0 0 ${material.color}`,
+              {categoryMaterials.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Material</th>
+                        <th>Cor</th>
+                        <th>Tipo</th>
+                        <th>Saldo</th>
+                        <th>Custo médio</th>
+                        <th>Valor em estoque</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categoryMaterials.map(({ material, balance }) => (
+                        <tr key={material.id}>
+                          <td
+                            style={
+                              material.color
+                                ? {
+                                    boxShadow: `inset 4px 0 0 ${material.color}`,
+                                  }
+                                : undefined
                             }
-                          : undefined
-                      }
-                    >
-                      <strong>{material.name}</strong>
-                    </td>
-                    <td>
-                      <MaterialColor color={material.color} />
-                    </td>
-                    <td>{material.kind}</td>
-                    <td>
-                      {number(balance.quantity, 3)} {material.unit}
-                    </td>
-                    <td>
-                      {money(balance.average)}/{material.unit}
-                    </td>
-                    <td>{money(balance.value)}</td>
-                    <td>
-                      <span
-                        className={`status ${material.minimum > 0 && balance.quantity < material.minimum ? 'warning' : 'good'}`}
-                      >
-                        {material.minimum > 0 && balance.quantity < material.minimum
-                          ? 'Abaixo do mínimo'
-                          : 'Em dia'}
-                      </span>
-                    </td>
-                    <td>
-                      <IconAction
-                        icon={Pencil}
-                        label={`Editar ${material.name}`}
-                        onClick={() => openEditMaterial(material)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <Empty
-            title="Nenhum material ainda"
-            description="Cadastre o primeiro material para começar a controlar seus custos."
-          />
-        )}
-      </section>
-      <section className="panel table-panel">
-        <SectionHeading eyebrow="HISTÓRICO DE MOVIMENTAÇÕES" title="Movimentações" />
-        {db.movements.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Material</th>
-                  <th>Tipo</th>
-                  <th>Quantidade</th>
-                  <th>Custo unitário</th>
-                  <th>Observação</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...db.movements].reverse().map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <span className="movement-date">
-                        {m.quantity < 0 ? (
-                          <ArrowDown size={16} className="negative" aria-label="Saída" />
-                        ) : (
-                          <ArrowUp size={16} className="positive" aria-label="Entrada" />
-                        )}
-                        {new Date(`${m.date}T12:00:00`).toLocaleDateString('pt-BR')}
-                      </span>
-                    </td>
-                    <td>
-                      <strong>{db.materials.find((item) => item.id === m.materialId)?.name}</strong>
-                    </td>
-                    <td>{m.type === 'purchase' ? 'Entrada' : 'Ajuste'}</td>
-                    <td className={m.quantity < 0 ? 'negative' : 'positive'}>
-                      {m.quantity > 0 ? '+' : ''}
-                      {number(m.quantity, 3)}
-                    </td>
-                    <td>{money(m.unitCost)}</td>
-                    <td>{m.note || '—'}</td>
-                    <td className="inventory-row-actions">
-                      <IconAction
-                        icon={Pencil}
-                        label={`Editar movimentação de ${db.materials.find((item) => item.id === m.materialId)?.name || 'material'}`}
-                        onClick={() => openEditMovement(m)}
-                      />
-                      <IconAction
-                        icon={Trash2}
-                        tone="pink"
-                        label="Excluir movimentação"
-                        onClick={() => setDeleteMovementId(m.id)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="quiet-message">As compras e os ajustes aparecerão aqui.</div>
-        )}
-      </section>
+                          >
+                            <strong>{material.name}</strong>
+                          </td>
+                          <td>
+                            <MaterialColor color={material.color} />
+                          </td>
+                          <td>{material.kind}</td>
+                          <td>
+                            {number(balance.quantity, 3)} {material.unit}
+                          </td>
+                          <td>
+                            {money(balance.average)}/{material.unit}
+                          </td>
+                          <td>{money(balance.value)}</td>
+                          <td>
+                            <span
+                              className={`status ${material.minimum > 0 && balance.quantity < material.minimum ? 'warning' : 'good'}`}
+                            >
+                              {material.minimum > 0 && balance.quantity < material.minimum
+                                ? 'Abaixo do mínimo'
+                                : 'Em dia'}
+                            </span>
+                          </td>
+                          <td className="inventory-row-actions">
+                            <IconAction
+                              icon={ArrowUpDown}
+                              tone="blue"
+                              label={`Movimentar ${material.name}`}
+                              onClick={() => openMovement(category.kind, material.id)}
+                            />
+                            <IconAction
+                              icon={Pencil}
+                              label={`Editar ${material.name}`}
+                              onClick={() => openEditMaterial(material)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <Empty
+                  title={`Nenhum item em ${category.title.toLowerCase()}`}
+                  description={`Use Adicionar ${category.singular} para começar a controlar seus custos.`}
+                />
+              )}
+            </section>
+            <section className="panel table-panel">
+              <SectionHeading
+                eyebrow="HISTÓRICO DE MOVIMENTAÇÕES"
+                title={`Movimentações de ${category.title.toLowerCase()}`}
+              />
+              {categoryMovements.length ? (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Material</th>
+                        <th>Tipo</th>
+                        <th>Quantidade</th>
+                        <th>Custo unitário</th>
+                        <th>Observação</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...categoryMovements].reverse().map((m) => (
+                        <tr key={m.id}>
+                          <td>
+                            <span className="movement-date">
+                              {m.quantity < 0 ? (
+                                <ArrowDown size={16} className="negative" aria-label="Saída" />
+                              ) : (
+                                <ArrowUp size={16} className="positive" aria-label="Entrada" />
+                              )}
+                              {new Date(`${m.date}T12:00:00`).toLocaleDateString('pt-BR')}
+                            </span>
+                          </td>
+                          <td>
+                            <strong>
+                              {db.materials.find((item) => item.id === m.materialId)?.name}
+                            </strong>
+                          </td>
+                          <td>{m.type === 'purchase' ? 'Entrada' : 'Ajuste'}</td>
+                          <td className={m.quantity < 0 ? 'negative' : 'positive'}>
+                            {m.quantity > 0 ? '+' : ''}
+                            {number(m.quantity, 3)}
+                          </td>
+                          <td>{money(m.unitCost)}</td>
+                          <td>{m.note || '—'}</td>
+                          <td className="inventory-row-actions">
+                            <IconAction
+                              icon={Pencil}
+                              label={`Editar movimentação de ${db.materials.find((item) => item.id === m.materialId)?.name || 'material'}`}
+                              onClick={() => openEditMovement(m)}
+                            />
+                            <IconAction
+                              icon={Trash2}
+                              tone="pink"
+                              label="Excluir movimentação"
+                              onClick={() => setDeleteMovementId(m.id)}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="quiet-message">As compras e os ajustes aparecerão aqui.</div>
+              )}
+            </section>
+          </Fragment>
+        )
+      })}
       {deleteMovementId && (
         <Modal
           title="Excluir movimentação?"

@@ -23,6 +23,9 @@ beforeEach(() => {
 })
 
 describe('estado compartilhado das páginas', () => {
+  it('inicia novas fichas com margem sobre venda de 30%', () => {
+    expect(blankSheet(emptyDatabase())).toMatchObject({ mode: 'sale', margin: 30 })
+  })
   it('inicializa a ficha com o canal salvo no navegador', async () => {
     const db = emptyDatabase()
     db.settings.channels = [{ id: 'loja', name: 'Loja', percentFee: 5, fixedFee: 1 }]

@@ -595,6 +595,20 @@ td strong {
 .inventory-actions {
   @apply flex flex-wrap items-center justify-end gap-2;
 }
+.table-panel > .flex {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.margin-range {
+  width: 100%;
+  accent-color: var(--color-brand-purple);
+  cursor: pointer;
+}
+.pricing-loss {
+  color: var(--color-brand-pink);
+  font-size: 12px;
+  margin-top: 16px;
+}
 .inventory-actions .page-tag {
   @apply mr-2;
 }

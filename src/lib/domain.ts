@@ -44,6 +44,7 @@ export type Sheet = {
   channelId: string
   mode: 'cost' | 'sale'
   margin: number | null
+  salePrice?: number | null
 }
 export type Quote = {
   id: string
@@ -136,8 +137,13 @@ export function priceQuote(sheet: Sheet, db: Database) {
   const margin = sheet.margin
   if (batch === null || !Number.isInteger(batch) || batch < 1)
     throw new Error('Informe um lote com pelo menos 1 unidade.')
-  if (margin === null || margin < 0 || margin >= 100)
-    throw new Error('Informe uma margem entre 0% e 99,99%.')
+  const manualPrice = sheet.salePrice != null
+  if (!manualPrice && (margin === null || !Number.isFinite(margin) || margin < 0))
+    throw new Error('Informe uma margem válida a partir de 0%.')
+  if (!manualPrice && sheet.mode === 'sale' && margin! >= 100)
+    throw new Error('A margem sobre venda deve ser menor que 100%.')
+  if (manualPrice && (!Number.isFinite(sheet.salePrice) || sheet.salePrice! <= 0))
+    throw new Error('Informe um preço de venda maior que zero.')
   if (sheet.printHours < 0 || sheet.labor < 0)
     throw new Error('Os custos e quantidades não podem ser negativos.')
   if (!sheet.filaments.length) throw new Error('Adicione ao menos um filamento à ficha técnica.')
@@ -152,10 +158,17 @@ export function priceQuote(sheet: Sheet, db: Database) {
     throw new Error('Confira os valores da impressora.')
   const channel = db.settings.channels.find((c) => c.id === sheet.channelId)
   if (!channel) throw new Error('Selecione um canal de venda.')
-  if (channel.percentFee < 0 || channel.percentFee >= 100 || channel.fixedFee < 0)
+  if (
+    !Number.isFinite(channel.percentFee) ||
+    !Number.isFinite(channel.fixedFee) ||
+    channel.percentFee < 0 ||
+    channel.percentFee >= 100 ||
+    channel.fixedFee < 0
+  )
     throw new Error('Verifique as taxas do canal.')
-  const denominator = 1 - channel.percentFee / 100 - (sheet.mode === 'sale' ? margin / 100 : 0)
-  if (denominator <= 0)
+  const denominator =
+    1 - channel.percentFee / 100 - (sheet.mode === 'sale' ? (margin ?? 0) / 100 : 0)
+  if (!manualPrice && denominator <= 0)
     throw new Error('A soma da margem e da taxa percentual deve ser menor que 100%.')
   const sourceCosts = new Map<string, number>()
   const average = (materialId: string) => {
@@ -197,12 +210,24 @@ export function priceQuote(sheet: Sheet, db: Database) {
     throw new Error('Confira os valores nas configurações.')
   const unitCost = Object.values(costs).reduce((a, b) => a + b, 0)
   const batchCost = unitCost * batch
-  const batchPrice =
-    sheet.mode === 'sale'
+  const batchPrice = manualPrice
+    ? sheet.salePrice! * batch
+    : sheet.mode === 'sale'
       ? (batchCost + channel.fixedFee) / denominator
-      : (batchCost * (1 + margin / 100) + channel.fixedFee) / denominator
+      : (batchCost * (1 + margin! / 100) + channel.fixedFee) / denominator
   const unitPrice = batchPrice / batch
   const profit = batchPrice * (1 - channel.percentFee / 100) - channel.fixedFee - batchCost
+  const percentageFee = (batchPrice * channel.percentFee) / 100
+  const totalFees = percentageFee + channel.fixedFee
+  const effectiveMargin = manualPrice
+    ? sheet.mode === 'sale'
+      ? (profit / batchPrice) * 100
+      : batchCost > 0
+        ? (profit / batchCost) * 100
+        : null
+    : margin
+  if (![batchPrice, unitPrice, profit, totalFees].every(Number.isFinite))
+    throw new Error('Os valores informados excedem o limite de cálculo.')
   const assumptions = {
     printerName: printer.name,
     channelName: channel.name,
@@ -218,6 +243,9 @@ export function priceQuote(sheet: Sheet, db: Database) {
     batchPrice,
     unitPrice,
     profit,
+    percentageFee,
+    totalFees,
+    effectiveMargin,
     sourceCosts: [...sourceCosts].map(([materialId, unitCost]) => ({ materialId, unitCost })),
     assumptions,
   }

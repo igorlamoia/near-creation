@@ -29,6 +29,27 @@ export default function Pricing() {
   } catch (error) {
     calcError = (error as Error).message
   }
+  const channel = db.settings.channels.find((item) => item.id === sheet.channelId)
+  const marginMax =
+    sheet.mode === 'cost'
+      ? 500
+      : Math.max(0, Math.floor((100 - (channel?.percentFee ?? 0) - 0.01) * 100) / 100)
+  const displayedMargin = calculated ? calculated.effectiveMargin : sheet.margin
+  const changeMargin = (margin: number | null) => setSheet({ ...sheet, margin, salePrice: null })
+  const changeMode = (mode: 'sale' | 'cost') => {
+    setSheet({
+      ...sheet,
+      mode,
+      salePrice: sheet.salePrice ?? null,
+      margin:
+        sheet.salePrice != null
+          ? sheet.margin
+          : Math.min(
+              sheet.margin ?? 30,
+              mode === 'sale' ? Math.max(0, 99.99 - (channel?.percentFee ?? 0)) : 500,
+            ),
+    })
+  }
   function openPricingSave(event: FormEvent) {
     event.preventDefault()
     if (!calculated) return flash(calcError)
@@ -48,7 +69,7 @@ export default function Pricing() {
     const quote = {
       id: id(),
       createdAt: new Date().toISOString(),
-      sheet: structuredClone(sheet),
+      sheet: { ...structuredClone(sheet), margin: calculated.effectiveMargin },
       ...calculated,
     }
     let products: Product[]
@@ -282,14 +303,14 @@ export default function Pricing() {
                 <button
                   type="button"
                   className={sheet.mode === 'cost' ? 'selected' : ''}
-                  onClick={() => setSheet({ ...sheet, mode: 'cost' })}
+                  onClick={() => changeMode('cost')}
                 >
                   Acréscimo sobre custo
                 </button>
                 <button
                   type="button"
                   className={sheet.mode === 'sale' ? 'selected' : ''}
-                  onClick={() => setSheet({ ...sheet, mode: 'sale' })}
+                  onClick={() => changeMode('sale')}
                 >
                   Margem sobre venda
                 </button>
@@ -297,28 +318,69 @@ export default function Pricing() {
               <Field
                 label={sheet.mode === 'cost' ? 'Acréscimo desejado (%)' : 'Margem desejada (%)'}
               >
-                <DecimalInput
-                  min="0"
-                  max="99.99"
+                <input
+                  type="number"
                   step="any"
-                  value={sheet.margin}
-                  placeholder="Ex.: 30"
-                  emptyValue={null}
-                  onValueChange={(value) =>
-                    setSheet({
-                      ...sheet,
-                      margin: value,
-                    })
+                  value={displayedMargin == null ? '' : Number(displayedMargin.toFixed(2))}
+                  onChange={(event) =>
+                    changeMargin(event.target.value === '' ? null : Number(event.target.value))
                   }
-                  required
                 />
               </Field>
+              <input
+                className="margin-range"
+                type="range"
+                aria-label={
+                  sheet.mode === 'cost'
+                    ? 'Ajustar acréscimo sobre custo'
+                    : 'Ajustar margem sobre venda'
+                }
+                min="0"
+                max={marginMax}
+                step="0.01"
+                value={Math.max(0, Math.min(marginMax, displayedMargin ?? 0))}
+                onChange={(event) => changeMargin(Number(event.target.value))}
+              />
+              <p className="field-hint">
+                {sheet.mode === 'cost'
+                  ? 'Controle de 0% a 500%. O acréscimo sobre custo pode ultrapassar 100%.'
+                  : `Controle de 0% a ${number(marginMax)}%. Margem e taxa percentual juntas devem ficar abaixo de 100%.`}
+                {sheet.salePrice != null && ' Percentual calculado a partir do preço informado.'}
+                {sheet.salePrice != null &&
+                  sheet.mode === 'cost' &&
+                  calculated?.effectiveMargin === null &&
+                  ' Acréscimo indefinido: custo de fabricação igual a zero.'}
+              </p>
+              <Field
+                label="Preço de venda por unidade (R$)"
+                hint="Digite o preço final para recalcular a margem após taxas. Ao ajustar a margem, o preço volta a ser calculado."
+              >
+                <DecimalInput
+                  value={
+                    sheet.salePrice ?? (calculated ? Number(calculated.unitPrice.toFixed(2)) : null)
+                  }
+                  emptyValue={null}
+                  placeholder="Ex.: 49,90"
+                  onValueChange={(value) => setSheet({ ...sheet, salePrice: value ?? 0 })}
+                />
+              </Field>
+              {sheet.salePrice != null && (
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() =>
+                    changeMargin(Math.max(0, Math.min(marginMax, displayedMargin ?? 30)))
+                  }
+                >
+                  Voltar ao preço calculado pela margem
+                </button>
+              )}
             </div>
           </section>
         </div>
         <aside className="result-panel">
           <span className="eyebrow">RESULTADO EM TEMPO REAL</span>
-          <h2>Seu preço sugerido</h2>
+          <h2>{sheet.salePrice != null ? 'Seu preço de venda' : 'Seu preço sugerido'}</h2>
           {calculated ? (
             <>
               <div className="price-highlight">
@@ -351,6 +413,29 @@ export default function Pricing() {
                 </div>
               </div>
               <div className="result-section">
+                <h3>
+                  Taxas da plataforma <span>{calculated.assumptions.channelName}</span>
+                </h3>
+                <div className="result-line">
+                  <span>
+                    Taxa percentual ({number(calculated.assumptions.percentFee)}%) no lote
+                  </span>
+                  <strong>{money(calculated.percentageFee)}</strong>
+                </div>
+                <div className="result-line">
+                  <span>Taxa fixa por lote</span>
+                  <strong>{money(calculated.assumptions.fixedFee)}</strong>
+                </div>
+                <div className="result-line total">
+                  <span>Total de taxas no lote</span>
+                  <strong>{money(calculated.totalFees)}</strong>
+                </div>
+                <div className="result-line">
+                  <span>Taxas por unidade</span>
+                  <strong>{money(calculated.totalFees / sheet.batch!)}</strong>
+                </div>
+              </div>
+              <div className="result-section">
                 <h3>Resultado do lote</h3>
                 <div className="result-line">
                   <span>Custo de fabricação</span>
@@ -361,6 +446,12 @@ export default function Pricing() {
                   <strong>{money(calculated.profit)}</strong>
                 </div>
               </div>
+              {calculated.profit < 0 && (
+                <p className="pricing-loss" role="status">
+                  Este preço gera prejuízo de {money(-calculated.profit)} por lote após custos e
+                  taxas.
+                </p>
+              )}
             </>
           ) : (
             <div className="result-placeholder">
@@ -398,7 +489,8 @@ export default function Pricing() {
             </div>
             <p>
               {calculated.assumptions.printerName} · {calculated.assumptions.channelName} ·{' '}
-              {sheet.mode === 'cost' ? 'Acréscimo' : 'Margem'} de {number(sheet.margin ?? 0)}%
+              {sheet.mode === 'cost' ? 'Acréscimo' : 'Margem'} de{' '}
+              {calculated.effectiveMargin == null ? '—' : `${number(calculated.effectiveMargin)}%`}
             </p>
           </div>
           <form className="form-grid pricing-save-form" onSubmit={saveProduct}>

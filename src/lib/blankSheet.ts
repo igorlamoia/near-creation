@@ -8,6 +8,6 @@ export const blankSheet = (db: Database): Sheet => ({
   labor: 0,
   batch: null,
   channelId: db.settings.channels[0]?.id || '',
-  mode: 'cost',
-  margin: null,
+  mode: 'sale',
+  margin: 30,
 })

@@ -1,5 +1,5 @@
 import { SegmentedControl } from '../components/ui/segmented-control'
-import { Fragment, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Plus, Save, Trash2, X } from 'lucide-react'
 import {
   type Material,
@@ -620,176 +620,167 @@ export default function Materials() {
         const categoryMaterials = materialSummary.filter(
           (item) => item.material.kind === category.kind,
         )
-        const materialIds = new Set(categoryMaterials.map((item) => item.material.id))
-        const categoryMovements = db.movements.filter((item) => materialIds.has(item.materialId))
         return (
-          <Fragment key={category.kind}>
-            <section className="panel table-panel" aria-label={category.title}>
-              <div className="flex items-center justify-between">
-                <SectionHeading eyebrow="SALDOS ATUAIS" title={category.title} />
-                <div className="inventory-actions">
-                  <span className="page-tag">{categoryMaterials.length} itens</span>
-                  <button
-                    type="button"
-                    className="button button-outline"
-                    disabled={!categoryMaterials.length}
-                    onClick={() => openMovement(category.kind)}
-                  >
-                    <ArrowUpDown aria-hidden="true" /> Movimentar {category.title.toLowerCase()}
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => openAddMaterial(category.kind)}
-                  >
-                    <Plus aria-hidden="true" /> Adicionar {category.singular}
-                  </button>
-                </div>
+          <section className="panel table-panel" aria-label={category.title} key={category.kind}>
+            <div className="flex items-center justify-between">
+              <SectionHeading eyebrow="SALDOS ATUAIS" title={category.title} />
+              <div className="inventory-actions">
+                <span className="page-tag">{categoryMaterials.length} itens</span>
+                <button
+                  type="button"
+                  className="button button-outline"
+                  disabled={!categoryMaterials.length}
+                  onClick={() => openMovement(category.kind)}
+                >
+                  <ArrowUpDown aria-hidden="true" /> Movimentar {category.title.toLowerCase()}
+                </button>
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => openAddMaterial(category.kind)}
+                >
+                  <Plus aria-hidden="true" /> Adicionar {category.singular}
+                </button>
               </div>
+            </div>
 
-              {categoryMaterials.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Material</th>
-                        <th>Cor</th>
-                        <th>Tipo</th>
-                        <th>Saldo</th>
-                        <th>Custo médio</th>
-                        <th>Valor em estoque</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {categoryMaterials.map(({ material, balance }) => (
-                        <tr key={material.id}>
-                          <td
-                            style={
-                              material.color
-                                ? {
-                                    boxShadow: `inset 4px 0 0 ${material.color}`,
-                                  }
-                                : undefined
-                            }
+            {categoryMaterials.length ? (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>Cor</th>
+                      <th>Tipo</th>
+                      <th>Saldo</th>
+                      <th>Custo médio</th>
+                      <th>Valor em estoque</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryMaterials.map(({ material, balance }) => (
+                      <tr key={material.id}>
+                        <td
+                          style={
+                            material.color
+                              ? {
+                                  boxShadow: `inset 4px 0 0 ${material.color}`,
+                                }
+                              : undefined
+                          }
+                        >
+                          <strong>{material.name}</strong>
+                        </td>
+                        <td>
+                          <MaterialColor color={material.color} />
+                        </td>
+                        <td>{material.kind}</td>
+                        <td>
+                          {number(balance.quantity, 3)} {material.unit}
+                        </td>
+                        <td>
+                          {money(balance.average)}/{material.unit}
+                        </td>
+                        <td>{money(balance.value)}</td>
+                        <td>
+                          <span
+                            className={`status ${material.minimum > 0 && balance.quantity < material.minimum ? 'warning' : 'good'}`}
                           >
-                            <strong>{material.name}</strong>
-                          </td>
-                          <td>
-                            <MaterialColor color={material.color} />
-                          </td>
-                          <td>{material.kind}</td>
-                          <td>
-                            {number(balance.quantity, 3)} {material.unit}
-                          </td>
-                          <td>
-                            {money(balance.average)}/{material.unit}
-                          </td>
-                          <td>{money(balance.value)}</td>
-                          <td>
-                            <span
-                              className={`status ${material.minimum > 0 && balance.quantity < material.minimum ? 'warning' : 'good'}`}
-                            >
-                              {material.minimum > 0 && balance.quantity < material.minimum
-                                ? 'Abaixo do mínimo'
-                                : 'Em dia'}
-                            </span>
-                          </td>
-                          <td className="inventory-row-actions">
-                            <IconAction
-                              icon={ArrowUpDown}
-                              tone="blue"
-                              label={`Movimentar ${material.name}`}
-                              onClick={() => openMovement(category.kind, material.id)}
-                            />
-                            <IconAction
-                              icon={Pencil}
-                              label={`Editar ${material.name}`}
-                              onClick={() => openEditMaterial(material)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <Empty
-                  title={`Nenhum item em ${category.title.toLowerCase()}`}
-                  description={`Use Adicionar ${category.singular} para começar a controlar seus custos.`}
-                />
-              )}
-            </section>
-            <section className="panel table-panel">
-              <SectionHeading
-                eyebrow="HISTÓRICO DE MOVIMENTAÇÕES"
-                title={`Movimentações de ${category.title.toLowerCase()}`}
-              />
-              {categoryMovements.length ? (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Data</th>
-                        <th>Material</th>
-                        <th>Tipo</th>
-                        <th>Quantidade</th>
-                        <th>Custo unitário</th>
-                        <th>Observação</th>
-                        <th>Ações</th>
+                            {material.minimum > 0 && balance.quantity < material.minimum
+                              ? 'Abaixo do mínimo'
+                              : 'Em dia'}
+                          </span>
+                        </td>
+                        <td className="inventory-row-actions">
+                          <IconAction
+                            icon={ArrowUpDown}
+                            tone="blue"
+                            label={`Movimentar ${material.name}`}
+                            onClick={() => openMovement(category.kind, material.id)}
+                          />
+                          <IconAction
+                            icon={Pencil}
+                            label={`Editar ${material.name}`}
+                            onClick={() => openEditMaterial(material)}
+                          />
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {[...categoryMovements].reverse().map((m) => (
-                        <tr key={m.id}>
-                          <td>
-                            <span className="movement-date">
-                              {m.quantity < 0 ? (
-                                <ArrowDown size={16} className="negative" aria-label="Saída" />
-                              ) : (
-                                <ArrowUp size={16} className="positive" aria-label="Entrada" />
-                              )}
-                              {new Date(`${m.date}T12:00:00`).toLocaleDateString('pt-BR')}
-                            </span>
-                          </td>
-                          <td>
-                            <strong>
-                              {db.materials.find((item) => item.id === m.materialId)?.name}
-                            </strong>
-                          </td>
-                          <td>{m.type === 'purchase' ? 'Entrada' : 'Ajuste'}</td>
-                          <td className={m.quantity < 0 ? 'negative' : 'positive'}>
-                            {m.quantity > 0 ? '+' : ''}
-                            {number(m.quantity, 3)}
-                          </td>
-                          <td>{money(m.unitCost)}</td>
-                          <td>{m.note || '—'}</td>
-                          <td className="inventory-row-actions">
-                            <IconAction
-                              icon={Pencil}
-                              label={`Editar movimentação de ${db.materials.find((item) => item.id === m.materialId)?.name || 'material'}`}
-                              onClick={() => openEditMovement(m)}
-                            />
-                            <IconAction
-                              icon={Trash2}
-                              tone="pink"
-                              label="Excluir movimentação"
-                              onClick={() => setDeleteMovementId(m.id)}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="quiet-message">As compras e os ajustes aparecerão aqui.</div>
-              )}
-            </section>
-          </Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Empty
+                title={`Nenhum item em ${category.title.toLowerCase()}`}
+                description={`Use Adicionar ${category.singular} para começar a controlar seus custos.`}
+              />
+            )}
+          </section>
         )
       })}
+      <section className="panel table-panel">
+        <SectionHeading eyebrow="HISTÓRICO DE MOVIMENTAÇÕES" title="Movimentações" />
+        {db.movements.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Material</th>
+                  <th>Tipo</th>
+                  <th>Quantidade</th>
+                  <th>Custo unitário</th>
+                  <th>Observação</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...db.movements].reverse().map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <span className="movement-date">
+                        {m.quantity < 0 ? (
+                          <ArrowDown size={16} className="negative" aria-label="Saída" />
+                        ) : (
+                          <ArrowUp size={16} className="positive" aria-label="Entrada" />
+                        )}
+                        {new Date(`${m.date}T12:00:00`).toLocaleDateString('pt-BR')}
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{db.materials.find((item) => item.id === m.materialId)?.name}</strong>
+                    </td>
+                    <td>{m.type === 'purchase' ? 'Entrada' : 'Ajuste'}</td>
+                    <td className={m.quantity < 0 ? 'negative' : 'positive'}>
+                      {m.quantity > 0 ? '+' : ''}
+                      {number(m.quantity, 3)}
+                    </td>
+                    <td>{money(m.unitCost)}</td>
+                    <td>{m.note || '—'}</td>
+                    <td className="inventory-row-actions">
+                      <IconAction
+                        icon={Pencil}
+                        label={`Editar movimentação de ${db.materials.find((item) => item.id === m.materialId)?.name || 'material'}`}
+                        onClick={() => openEditMovement(m)}
+                      />
+                      <IconAction
+                        icon={Trash2}
+                        tone="pink"
+                        label="Excluir movimentação"
+                        onClick={() => setDeleteMovementId(m.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="quiet-message">As compras e os ajustes aparecerão aqui.</div>
+        )}
+      </section>
       {deleteMovementId && (
         <Modal
           title="Excluir movimentação?"

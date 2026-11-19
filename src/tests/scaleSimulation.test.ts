@@ -7,6 +7,7 @@ import {
   simulateScale,
   type ScaleSimulationBase,
 } from '../lib/scaleSimulation'
+import { DEFAULT_VISUAL_CONFIG } from '../lib/scaleVisualization'
 
 const base: ScaleSimulationBase = {
   sizeCm: 10,
@@ -85,6 +86,7 @@ describe('simulador de escala 3D', () => {
       method: 'detailed' as const,
       percent: 135,
       visibility: { filament: true, time: true },
+      visual: { shape: 'sphere' as const, objectColor: '#12AB34', showLabels: false },
     }
     expect(decodeSimulationPayload(encodeSimulationPayload(payload))).toEqual(payload)
     expect(() => decodeSimulationPayload('não-é-um-payload')).toThrow('link de simulação')
@@ -96,6 +98,7 @@ describe('simulador de escala 3D', () => {
       method: 'detailed',
       percent: 100,
       visibility: { filament: false, time: false },
+      visual: DEFAULT_VISUAL_CONFIG,
     })
     const raw = atob(encoded.replaceAll('-', '+').replaceAll('_', '/'))
     const decoded = decodeSimulationPayload(encoded)
@@ -129,6 +132,7 @@ describe('simulador de escala 3D', () => {
     expect(decoded.base.basePercent).toBe(100)
     expect(decoded.base.filaments).toEqual(base.filaments)
     expect(decoded.base.timeHours).toBe(base.timeHours)
+    expect(decoded.visual).toEqual(DEFAULT_VISUAL_CONFIG)
   })
 
   it('mantém links da segunda versão e assume escala original de 100%', () => {
@@ -151,5 +155,31 @@ describe('simulador de escala 3D', () => {
     const decoded = decodeSimulationPayload(encoded)
     expect(decoded.base.basePercent).toBe(100)
     expect(decoded.visibility).toEqual({ filament: false, time: false })
+    expect(decoded.visual).toEqual(DEFAULT_VISUAL_CONFIG)
+  })
+
+  it('mantém links da terceira versão e aplica o visual padrão', () => {
+    const legacy = {
+      v: 3,
+      a: base.sizeCm,
+      b: base.unitPrice,
+      c: base.filaments.map((filament) => ({ a: filament.name, b: filament.grams })),
+      d: base.timeHours,
+      e: base.fixedUnitCost,
+      f: base.scalableUnitCost,
+      g: base.batch,
+      h: base.fixedFee,
+      i: base.percentFee,
+      j: 'c',
+      k: base.margin,
+      l: 'd',
+      m: 440,
+      n: 3,
+      o: 440,
+    }
+    const encoded = btoa(JSON.stringify(legacy)).replaceAll('+', '-').replaceAll('/', '_')
+    const decoded = decodeSimulationPayload(encoded)
+    expect(decoded.base.basePercent).toBe(440)
+    expect(decoded.visual).toEqual(DEFAULT_VISUAL_CONFIG)
   })
 })

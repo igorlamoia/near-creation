@@ -14,6 +14,7 @@ import { useAppStore } from '../store/useAppStore'
 import { useNavigate } from '@tanstack/react-router'
 import { usePricingDraft } from '../store/usePricingDraft'
 import ScaleSimulator from '../components/ScaleSimulator'
+import { getDominantObjectColor } from '../lib/scaleVisualization'
 
 export default function Pricing() {
   const { db, commit, setNotice: flash } = useAppStore()
@@ -485,6 +486,12 @@ export default function Pricing() {
           }}
           editableReferenceSize
           allowVisibilitySelection
+          objectColor={getDominantObjectColor(
+            sheet.filaments.map((filament) => ({
+              grams: filament.weightGrams,
+              color: db.materials.find((material) => material.id === filament.materialId)?.color,
+            })),
+          )}
         />
       )}
       {pricingSaveOpen && calculated && (

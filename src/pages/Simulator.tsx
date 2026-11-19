@@ -39,6 +39,9 @@ export default function Simulator() {
           initialPercent={decoded.percent}
           initialMethod={decoded.method}
           initialVisibility={decoded.visibility}
+          initialShape={decoded.visual.shape}
+          initialShowLabels={decoded.visual.showLabels}
+          objectColor={decoded.visual.objectColor}
           showMethodSelector={false}
         />
       ) : (

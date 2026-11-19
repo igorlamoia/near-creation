@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Clock3, Copy, Cuboid, Info, Percent, Ruler, Weight } from 'lucide-react'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { Clock3, Copy, Cuboid, Eye, EyeOff, Info, Percent, Ruler, Weight } from 'lucide-react'
 import DecimalInput from './DecimalInput'
 import Field from './Field'
 import SectionHeading from './SectionHeading'
@@ -15,6 +15,13 @@ import {
   type SimulationMethod,
   type SimulationVisibility,
 } from '../lib/scaleSimulation'
+import {
+  DEFAULT_VISUAL_CONFIG,
+  simulationShapeOptions,
+  type SimulationShape,
+} from '../lib/scaleVisualization'
+
+const ScaleVisualizer = lazy(() => import('./simulator/ScaleVisualizer'))
 
 type ScaleSimulatorProps = {
   base: Omit<ScaleSimulationBase, 'sizeCm' | 'basePercent'>
@@ -23,6 +30,9 @@ type ScaleSimulatorProps = {
   initialPercent?: number
   initialMethod?: SimulationMethod
   initialVisibility?: SimulationVisibility
+  initialShape?: SimulationShape
+  initialShowLabels?: boolean
+  objectColor?: string
   editableReferenceSize?: boolean
   allowVisibilitySelection?: boolean
   showMethodSelector?: boolean
@@ -44,6 +54,9 @@ export default function ScaleSimulator({
   initialPercent,
   initialMethod = 'detailed',
   initialVisibility = { filament: true, time: true },
+  initialShape = DEFAULT_VISUAL_CONFIG.shape,
+  initialShowLabels = DEFAULT_VISUAL_CONFIG.showLabels,
+  objectColor = DEFAULT_VISUAL_CONFIG.objectColor,
   editableReferenceSize = false,
   allowVisibilitySelection = false,
   showMethodSelector = true,
@@ -53,6 +66,8 @@ export default function ScaleSimulator({
   const [percent, setPercent] = useState(initialPercent ?? initialBasePercent)
   const [method, setMethod] = useState<SimulationMethod>(initialMethod)
   const [visibility, setVisibility] = useState(initialVisibility)
+  const [shape, setShape] = useState<SimulationShape>(initialShape)
+  const [showLabels, setShowLabels] = useState(initialShowLabels)
   const [inputError, setInputError] = useState('')
   const [copyStatus, setCopyStatus] = useState('')
   const simulationBase = useMemo<ScaleSimulationBase | null>(
@@ -96,7 +111,13 @@ export default function ScaleSimulator({
 
   const copyLink = async () => {
     if (!simulationBase || !result) return
-    const encoded = encodeSimulationPayload({ base: simulationBase, method, percent, visibility })
+    const encoded = encodeSimulationPayload({
+      base: simulationBase,
+      method,
+      percent,
+      visibility,
+      visual: { shape, objectColor, showLabels },
+    })
     const path = `${import.meta.env.BASE_URL}simulator?n=${encodeURIComponent(encoded)}`
     const link = new URL(path, window.location.origin).toString()
     try {
@@ -369,6 +390,61 @@ export default function ScaleSimulator({
             <p className="simulation-copy-status" role="status">
               {copyStatus}
             </p>
+          )}
+
+          {result && (
+            <div className="simulation-visual-section">
+              <div
+                className="simulation-shape-selector"
+                role="radiogroup"
+                aria-label="Formato do objeto"
+              >
+                {simulationShapeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={shape === option.value}
+                    className={shape === option.value ? 'is-active' : ''}
+                    onClick={() => setShape(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div className="simulation-canvas-shell">
+                <button
+                  type="button"
+                  className="simulation-label-toggle"
+                  aria-pressed={showLabels}
+                  onClick={() => setShowLabels((current) => !current)}
+                >
+                  {showLabels ? (
+                    <Eye size={16} aria-hidden="true" />
+                  ) : (
+                    <EyeOff size={16} aria-hidden="true" />
+                  )}
+                  {showLabels ? 'Ocultar medidas' : 'Mostrar medidas'}
+                </button>
+                <Suspense
+                  fallback={
+                    <div className="simulation-canvas-loading" role="status">
+                      Carregando comparação 3D…
+                    </div>
+                  }
+                >
+                  <ScaleVisualizer
+                    shape={shape}
+                    sizeCm={result.sizeCm}
+                    color={objectColor}
+                    showLabels={showLabels}
+                  />
+                </Suspense>
+              </div>
+              <p className="simulation-visual-hint">
+                Arraste para girar e use o gesto de pinça para aproximar.
+              </p>
+            </div>
           )}
         </>
       )}

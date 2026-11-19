@@ -1,3 +1,11 @@
+import { normalizeMaterialColor } from './materialColor'
+import {
+  DEFAULT_VISUAL_CONFIG,
+  isSimulationShape,
+  type SimulationShape,
+  type SimulationVisualConfig,
+} from './scaleVisualization'
+
 export type SimulationMethod = 'cubic' | 'detailed'
 
 export type SimulationVisibility = {
@@ -40,6 +48,7 @@ export type SimulationPayload = {
   method: SimulationMethod
   percent: number
   visibility: SimulationVisibility
+  visual: SimulationVisualConfig
 }
 
 const finitePositive = (value: number) => Number.isFinite(value) && value > 0
@@ -137,7 +146,7 @@ export function percentFromPrice(
 }
 
 type CodedPayload = {
-  v: 1 | 2 | 3
+  v: 1 | 2 | 3 | 4
   a: number
   b: number
   c?: { a: string; b: number }[]
@@ -153,7 +162,22 @@ type CodedPayload = {
   m: number
   n?: number
   o?: number
+  p?: 'c' | 'v' | 'h' | 's' | 'd'
+  q?: string
+  r?: 0 | 1
 }
+
+const shapeCodes: Record<SimulationShape, NonNullable<CodedPayload['p']>> = {
+  cube: 'c',
+  'box-vertical': 'v',
+  'box-horizontal': 'h',
+  sphere: 's',
+  disc: 'd',
+}
+
+const shapesByCode = Object.fromEntries(
+  Object.entries(shapeCodes).map(([shape, code]) => [code, shape]),
+) as Record<NonNullable<CodedPayload['p']>, SimulationShape>
 
 function toBase64Url(value: string) {
   const bytes = new TextEncoder().encode(value)
@@ -174,7 +198,7 @@ export function encodeSimulationPayload(payload: SimulationPayload) {
   assertBase(payload.base)
   if (!finitePositive(payload.percent)) throw new Error('A escala compartilhada é inválida.')
   const coded: CodedPayload = {
-    v: 3,
+    v: 4,
     a: payload.base.sizeCm,
     b: payload.base.unitPrice,
     c: payload.visibility.filament
@@ -192,6 +216,9 @@ export function encodeSimulationPayload(payload: SimulationPayload) {
     m: payload.percent,
     n: (payload.visibility.filament ? 1 : 0) | (payload.visibility.time ? 2 : 0),
     o: payload.base.basePercent,
+    p: shapeCodes[payload.visual.shape],
+    q: normalizeMaterialColor(payload.visual.objectColor) ?? DEFAULT_VISUAL_CONFIG.objectColor,
+    r: payload.visual.showLabels ? 1 : 0,
   }
   return toBase64Url(JSON.stringify(coded))
 }
@@ -200,7 +227,7 @@ export function decodeSimulationPayload(value: string): SimulationPayload {
   try {
     const coded = JSON.parse(fromBase64Url(value)) as Partial<CodedPayload>
     if (
-      ![1, 2, 3].includes(coded.v ?? 0) ||
+      ![1, 2, 3, 4].includes(coded.v ?? 0) ||
       !['c', 's'].includes(coded.j ?? '') ||
       !['c', 'd'].includes(coded.l ?? '')
     )
@@ -216,7 +243,7 @@ export function decodeSimulationPayload(value: string): SimulationPayload {
     if (visibility.time && !finiteNonNegative(coded.d as number)) throw new Error()
     const base: ScaleSimulationBase = {
       sizeCm: coded.a as number,
-      basePercent: coded.v === 3 ? (coded.o as number) : 100,
+      basePercent: coded.v === 3 || coded.v === 4 ? (coded.o as number) : 100,
       unitPrice: coded.b as number,
       filaments: visibility.filament
         ? coded.c!.map((filament) => ({ name: filament.a, grams: filament.b }))
@@ -232,11 +259,27 @@ export function decodeSimulationPayload(value: string): SimulationPayload {
     }
     assertBase(base)
     if (!finitePositive(coded.m as number)) throw new Error()
+    const decodedShape = coded.p ? shapesByCode[coded.p] : undefined
+    const decodedColor = normalizeMaterialColor(coded.q ?? '')
+    const visual: SimulationVisualConfig =
+      coded.v === 4
+        ? {
+            shape: decodedShape as SimulationShape,
+            objectColor: decodedColor as string,
+            showLabels: coded.r === 1,
+          }
+        : { ...DEFAULT_VISUAL_CONFIG }
+    if (
+      coded.v === 4 &&
+      (!isSimulationShape(decodedShape) || !decodedColor || ![0, 1].includes(coded.r as number))
+    )
+      throw new Error()
     return {
       base,
       method: coded.l === 'c' ? 'cubic' : 'detailed',
       percent: coded.m as number,
       visibility,
+      visual,
     }
   } catch {
     throw new Error('Este link de simulação é inválido ou está incompleto.')

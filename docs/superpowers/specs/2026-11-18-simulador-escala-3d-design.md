@@ -56,3 +56,10 @@ Permitir que a precificação de uma peça seja simulada em outros tamanhos e co
 ## Critério de conclusão
 
 O trabalho estará concluído quando os dois métodos produzirem resultados diretos e inversos consistentes, o componente funcionar na precificação e na rota pública, o link reproduzir a simulação e os testes, lint e build passarem.
+
+## Refinamento da comparação visual
+
+- A pessoa de referência mede 170 cm.
+- As mãos têm a mesma espessura dos antebraços e encostam nas laterais do objeto, sem cobrir peças pequenas.
+- As medidas são overlays HTML discretos e fixos nas bordas do canvas, sem acompanhar perspectiva ou zoom.
+- O bloco completo de visualização aparece por último no simulador, abaixo dos resultados e avisos, e ocupa toda a largura disponível.

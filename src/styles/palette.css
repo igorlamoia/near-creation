@@ -472,6 +472,72 @@ td strong {
 .simulation-visibility-hint {
   @apply -mt-3 mb-5 text-xs text-text-secondary;
 }
+.simulation-visual-section {
+  margin-top: 22px;
+}
+.simulation-shape-selector {
+  @apply mb-2 flex flex-wrap gap-1.5;
+}
+.simulation-shape-selector button {
+  @apply rounded-full border border-border bg-elevated px-3 py-1.5 text-xs text-text-secondary transition-colors;
+}
+.simulation-shape-selector button:hover,
+.simulation-shape-selector button.is-active {
+  @apply border-brand-purple/70 bg-brand-purple/15 text-text-primary;
+}
+.simulation-shape-selector button:focus-visible,
+.simulation-label-toggle:focus-visible {
+  @apply outline-none ring-2 ring-brand-purple ring-offset-2 ring-offset-surface;
+}
+.simulation-canvas-shell {
+  position: relative;
+  height: clamp(360px, 48vw, 540px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #111522;
+}
+.simulation-canvas-figure,
+.simulation-canvas,
+.simulation-canvas-loading,
+.simulation-canvas-fallback {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.simulation-canvas-loading,
+.simulation-canvas-fallback {
+  @apply flex items-center justify-center p-6 text-center text-sm text-text-secondary;
+}
+.simulation-label-toggle {
+  @apply absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur-sm;
+}
+.simulation-scene-measures {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+.simulation-scene-measure {
+  @apply absolute whitespace-nowrap rounded border border-white/10 bg-black/35 px-2 py-1 text-[10px] font-medium text-white/70 backdrop-blur-sm;
+}
+.simulation-scene-measure-object {
+  left: 10px;
+  top: 10px;
+}
+.simulation-scene-measure-person {
+  bottom: 10px;
+  left: 10px;
+}
+.simulation-scene-measure {
+  pointer-events: none;
+}
+.simulation-scene-description {
+  @apply sr-only;
+}
+.simulation-visual-hint {
+  @apply mb-0 mt-2 text-center text-xs text-text-secondary;
+}
 .simulation-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -571,6 +637,7 @@ td strong {
 @media (max-width: 620px) {
   .scale-simulator > .section-heading {
     align-items: stretch;
+    flex-direction: column;
   }
   .scale-simulator > .section-heading .button {
     width: 100%;
@@ -589,6 +656,11 @@ td strong {
   .public-simulator-page {
     width: min(100% - 24px, 1080px);
     padding: 30px 0;
+  }
+}
+@media (max-width: 880px) {
+  .simulation-canvas-shell {
+    height: clamp(320px, 72vw, 460px);
   }
 }
 .channel-row strong {
